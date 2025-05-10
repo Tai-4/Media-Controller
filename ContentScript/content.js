@@ -1,112 +1,180 @@
-class MediaAudioController{
-    static _controllerList = [];
+// eslint-disable-next-line no-redeclare
+class Audio {
+    static instanceList = []
+    static defaultPanValue = 0
 
-    constructor(mediaElement){
-        this._context = new (window.AudioContext || window.webkitAudioContext);
-        this._source = this._context.createMediaElementSource(mediaElement);
-        this._gainNode = this._context.createGain();
-        this._panner = new StereoPannerNode(this._context, { pan: 0 });
-        this._connect();
-
-        this.constructor._controllerList.push(this);
+    static getOrCreate(mediaElement, audioSettings) {
+        return Audio.instanceList.find((audio) =>
+            audio.mediaElement == mediaElement
+        ) ?? new Audio(mediaElement, audioSettings)
     }
 
-    static getList(callback){
-        if (callback === undefined){
-            return this._controllerList;
-        }
+    constructor(mediaElement, audioSettings) {
+        this.mediaElement = mediaElement
+        this.context = new (window.AudioContext || window.webkitAudioContext)
+        this._gainNode = this.context.createGain()
+        this._panner = new StereoPannerNode(
+            this.context,
+            { pan: Audio.defaultPanValue }
+        )
 
-        _controllerList.forEach(controller => {
-            callback(controller);
-        });
+        const source = this.context.createMediaElementSource(this.mediaElement)
+        source
+            .connect(this._gainNode)
+            .connect(this._panner)
+            .connect(this.context.destination)
+        this.updateSettings(audioSettings)
+
+        Audio.instanceList.push(this)
     }
 
-    static getOrCreate(videoElement){
-        const findResult = this._controllerList.find(c => c._source.mediaElement === videoElement);
-        const controller = findResult ?? new MediaAudioController(videoElement);
-        return controller;
-    }
-
-    _connect(){
-        this._source
-        .connect(this._gainNode)
-        .connect(this._panner)
-        .connect(this._context.destination);
-    }
-
-    updateVolume(volumeLevel){
-        this._gainNode.gain.value = volumeLevel;
-    }
-
-    updateStereoPan(stereoPanLevel){
-        this._panner.pan.value = stereoPanLevel;
+    updateSettings(audioSettings) {
+        this._gainNode.gain.value = audioSettings.volume
+        this._panner.pan.value = audioSettings.pan
+        this.audioSettings = audioSettings
     }
 }
 
-class VideoElementManager{
-    static {
-        this._collection = document.getElementsByTagName("video");
-    }
-
-    static getCollection(callback){
-        if (callback === undefined){
-            return this._collection;
-        }
-
-        for (const videoElement of this._collection) {
-            callback(videoElement);
-        }
-    }
-
-    static get(index){
-        return this._collection.item(index);
+class AudioSettings {
+    constructor(volume = 1, pan = 0, speed = 1) {
+        this.volume = volume
+        this.pan = pan
+        this.speed = speed
     }
 }
 
-class Data{
-    static{
-        this.volumeLevel = 1;
-        this.stereoPanLevel = 0;
+class AudioList {    
+    constructor(mediaElements, sharedAudioSettings) {
+        this.sharedAudioSettings = sharedAudioSettings
+        this._audios = mediaElements.map((mediaElement) => {
+            const audio = Audio.getOrCreate(
+                mediaElement, 
+                sharedAudioSettings
+            )
+            audio.updateSettings(sharedAudioSettings)
+            return audio
+        })
+    }
+
+    registerAudio(audio) {
+        audio.updateSettings(this.sharedAudioSettings)
+        this._audios.push(audio)
+    }
+
+    registerMediaElement(mediaElement) {
+        const audio = Audio.getOrCreate(
+            mediaElement,
+            this.sharedAudioSettings
+        )
+        this.registerAudio(audio)
+    }
+
+    updateAllAudioSettings(settings) {
+        this.sharedAudioSettings = settings
+        this._audios.forEach((audio) => {
+            audio.updateSettings(settings)
+        })
+    }
+
+    updateAllAudioVolume(volume) {
+        this.updateAllAudioSettings(
+            new AudioSettings(
+                volume,
+                this.sharedAudioSettings.pan,
+                this.sharedAudioSettings.speed
+            )
+        )
+    }
+
+    updateAllAudioPan(pan) {
+        this.updateAllAudioSettings(
+            new AudioSettings(                
+                this.sharedAudioSettings.volume,
+                pan, 
+                this.sharedAudioSettings.speed
+            )
+        )
+    }
+
+    updateAllAudioSpeed(speed) {
+        this.updateAllAudioSettings(
+            new AudioSettings(
+                this.sharedAudioSettings.volume,
+                this.sharedAudioSettings.pan, 
+                speed
+            )
+        )
     }
 }
 
-main();
+class ConcatHTMLCollection {
+    constructor(...collections) {
+        this.collections = collections
+    }
 
-function main(){
+    toArray() {
+        return this.collections.flatMap(
+            (collection) => [...collection]
+        )
+    }
+}
+
+class Model {
+    audioSettings = new AudioSettings()
+    mediaElementCollection = new ConcatHTMLCollection(
+        document.getElementsByTagName("audio"),
+        document.getElementsByTagName("video")
+    )
+
+    pong() {
+        return "pong"
+    }
+
+    getAudioSettings() {
+        return {
+            volume: this.audioSettings.volume,
+            pan: this.audioSettings.pan,
+            speed: this.audioSettings.speed
+        }
+    }
+    updateAudioVolume(volume) {
+        const documentAudioList = new AudioList(
+            this.mediaElementCollection.toArray(),
+            this.audioSettings
+        )
+        documentAudioList.updateAllAudioVolume(volume)
+        this.audioSettings = documentAudioList.sharedAudioSettings
+    }
+    updateAudioPan(pan) {
+        const documentAudioList = new AudioList(
+            this.mediaElementCollection.toArray(),
+            this.audioSettings
+        )
+        documentAudioList.updateAllAudioPan(pan)
+        this.audioSettings = documentAudioList.sharedAudioSettings
+    }
+    updateAudioSpeed(speed) {
+        const documentAudioList = new AudioList(
+            this.mediaElementCollection.toArray(),
+            this.audioSettings
+        )
+        documentAudioList.updateAllAudioSpeed(speed)
+        this.audioSettings = documentAudioList.sharedAudioSettings
+    }
+}
+
+(() => {
+    const model = new Model()
+    const processMap = {
+        "PING": model.pong,
+        "GET AudioSettings": model.getAudioSettings,
+        "UPDATE AudioVolume": model.updateAudioVolume,
+        "UPDATE AudioPan": model.updateAudioPan,
+        "UPDATE AudioSpeed": model.updateAudioSpeed
+    }
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        const response = switchProcessByMessage(message);
-        sendResponse(response);
+        const process = processMap[message.request]
+        const response = process.call(model, message.data)
+        sendResponse(response)
     })
-}
-
-function switchProcessByMessage(message){
-    switch (message.content) {
-        case "Connect": {
-            const response = { isSucceeded: true };
-            return response;
-        }
-        case "Get-Settings-Value": {
-            const response = { volumeLevel: Data.volumeLevel, stereoPanLevel: Data.stereoPanLevel};
-            return response;
-        }
-        case "Post-Volume-Level": {
-            Data.volumeLevel = message.volumeLevel;
-            VideoElementManager.getCollection((videoElement) => {
-                const controller = MediaAudioController.getOrCreate(videoElement);
-                controller.updateVolume(Data.volumeLevel);
-            })
-            return;
-        }
-        case "Post-Stereo-Pan-Level": {
-            Data.stereoPanLevel = message.stereoPanLevel;
-            VideoElementManager.getCollection((videoElement) => {
-                const controller = MediaAudioController.getOrCreate(videoElement);
-                controller.updateStereoPan(Data.stereoPanLevel);
-            })
-            return;
-        }
-        default: {
-            throw new Error("Invalid message");
-        }
-    }
-}
+})()

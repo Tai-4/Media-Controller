@@ -1,247 +1,152 @@
-class ElementManager{
-    static {
-        this._loadingAnimation = this._createLoadingAnimation();
-    }
-
-    static _createLoadingAnimation(){
-        const noImageBox = this.create("div", "loading-box page-info__item__favicon");
-        const noImageMark = this.create("div", "loading-box__mark");
-        noImageBox.appendChild(noImageMark);
-
-        return noImageBox;
-    }
-
-    static findByClassName(className){
-        return document.getElementsByClassName(className)[0];
-    }
-
-    static create(tagName, className = ""){
-        const element = document.createElement(tagName);
-        element.className = className;
-
-        return element;
-    }
-
-    static replaceToLoadingAnimation(replacedElement){
-        replacedElement.hidden = true;
-        this.insertBefore(this._loadingAnimation, replacedElement);
-    }
-
-    static insertBefore(insertElement, criteriaElement){
-        criteriaElement.parentElement.insertBefore(insertElement, criteriaElement);
-    }
-
-    static insertAfter(insertElement, criteriaElement){
-        this.insertBefore(insertElement, criteriaElement.nextSibling);
-    }
-}
-
-class Binding{
-    constructor(source, eventType, callback){
-        source.element.addEventListener(eventType, () => {
-            const value = source.get();
-            callback(value);
-        }, false);
-    }
-}
-
-class Input extends ElementManager{
-    static{
-        this.volumeLevel = {
-            element: ElementManager.findByClassName("settings__volume-level-controller__slider"),
-            get: function(){ return this.element.value; },
-            set: function(value){ this.element.value = value; }
-        };
-        this.stereoPanLevel = {
-            element: ElementManager.findByClassName("settings__stereo-pan-level-controller__slider"),
-            get: function(){ return this.element.value; },
-            set: function(value){ this.element.value = value; }
-        };
-    }
-}
-
-class Display extends ElementManager{
-    static{
-        this.pagefavicon = {
-            element: ElementManager.findByClassName("page-info__item__favicon"),
-            set: function(value){ this.element.src = value; }
-        };
-        this.pageTitle = {
-            element: ElementManager.findByClassName("page-info__item__title"),
-            set: function(value){ this.element.textContent = value; }
-        };
-        this.volumePersent = {
-            element: ElementManager.findByClassName("settings__volume-persent__current"),
-            binding: new Binding(Input.volumeLevel, "input", function(value){ Display.volumePersent.set(value * 10 * 10); }),
-            set: function(value){ this.element.textContent = value; }
-        };
-    }
-}
-
-class Block extends ElementManager{
-    static{
-        this.pageInfo = {
-            element: ElementManager.findByClassName("page-info")
-        }
-        this.settings = {
-            element: ElementManager.findByClassName("settings")
-        }
-    }
-}
-
-class AlertBox{
-    constructor(type, detail){
-        this.element = this._create();
-        this.heading.textContent = type;
-        this.detail.textContent = detail;
-    }
-
-    _create(){
-        const alertBox = ElementManager.create("div", "alert-box");
-        this.heading = ElementManager.create("h2", "heading");
-        this.detail = ElementManager.create("p", "alert-box__detail");
-
-        alertBox.appendChild(this.heading);
-        alertBox.appendChild(this.detail);
-        return alertBox;
-    }
-
-    insertBefore(criteriaElement){
-        ElementManager.insertBefore(this.element, criteriaElement);
-    }
-
-    insertAfter(criteriaElement){
-        ElementManager.insertAfter(this.element, criteriaElement);
-    }
-}
-
-class TabManager{
+class TabUtils {
     static async getCurrentTab(){
         const queryOptions = { active: true, currentWindow: true };
         const tabList = await chrome.tabs.query(queryOptions);
         const currentTab = tabList[0];
         return currentTab;
     }
-
-    static isPageLoaded(){
-        return Data.currentTab.status === "complete";
-    }
-
-    static async waitForPageLoad(){
-        await Task.delay(500);
-        while (!this.isPageLoaded()){
-            await Task.delay(500);
-        }
-    }
 }
 
-class MessagePassing{
-    static async tryConnect(){
-        const message = { content: "Connect" };
-        await this.request(message, true);
-        
-        if (chrome.runtime.lastError !== undefined){
-            const error = new Error("Connection failed.");
-            error.name = "ConnectionError"
-            throw error;
+class ConnectionError extends Error {}
+
+class API {
+    async ping(tabId) {
+        const message = {
+            request: "PING"
         }
+        return await this._sendMessage(tabId, message, ConnectionError)
     }
 
-    static request(message, needsResponse = false){
-        return new Promise(async (resolve) => {
-            if (needsResponse){
-                await chrome.tabs.sendMessage(Data.currentTab.id, message, (response) => {
-                    resolve(response);
-                });
-            } else {
-                await chrome.tabs.sendMessage(Data.currentTab.id, message);
+    async getSharedAudioSettings(tabId) {
+        const message = {
+            request: "GET AudioSettings"
+        }
+        return await this._sendMessage(tabId, message)
+    }
+
+    async updateSharedAudioVolume(tabId, volume) {
+        const message = {
+            request: "UPDATE AudioVolume",
+            data: volume
+        }
+        return await this._sendMessage(tabId, message)
+    }
+
+    async updateSharedAudioPan(tabId, pan) {
+        const message = {
+            request: "UPDATE AudioPan",
+            data: pan
+        }
+        return await this._sendMessage(tabId, message)
+    }
+
+    async updateSharedAudioSpeed(tabId, speed) {
+        const message = {
+            request: "UPDATE AudioSpeed",
+            data: speed
+        }
+        return await this._sendMessage(tabId, message)
+    }
+
+    _sendMessage(tabId, message, errorType = Error) {
+        return new Promise((resolve, reject) => {
+            const callback = (response) => {
+                if (chrome.runtime.lastError == undefined) {
+                    resolve(response)
+                } else {
+                    reject(errorType)
+                }
             }
-        });
+            chrome.tabs.sendMessage(tabId, message, callback)
+        })
     }
+}
 
-    static requestSettingsValue(){
-        const message = { content: "Get-Settings-Value" };
-        return MessagePassing.request(message, true);
-    }
+class PopupView {
+    static loadingAnimationHTML = `
+        <div class="loading-box page-info__item__favicon">
+            <div class="loading-box__mark" />
+        </div>
+    `
+
+    static alertboxHTML = `
+        <div class="alert-box">
+            <h2 class="heading">Error</h2>
+            <p class="alert-box__detail">Connection failed.</p>
+        </div>
+    `
+
+    api = new API()
+
+    pageInfoView = document.getElementsByClassName("page-info")[0]
+    settingsControllerView = document.getElementsByClassName("settings")[0]
+    volumeSlider = document.getElementsByClassName("settings__volume-level-controller__slider")[0]
+    panSlider = document.getElementsByClassName("settings__stereo-pan-level-controller__slider")[0]
+    volumeLevelView = document.getElementsByClassName("settings__volume-persent__current")[0]
+    pageFaviconView = document.getElementsByClassName("page-info__item__favicon")[0]
+    pageTitleView = document.getElementsByClassName("page-info__item__title")[0]
     
-    static requestPostVolumeLevel(){
-        const message = { content: "Post-Volume-Level", volumeLevel: Input.volumeLevel.get() };
-        MessagePassing.request(message);
-    }
-    
-    static requestPostStereoPanLevel(){
-        const message = { content: "Post-Stereo-Pan-Level", stereoPanLevel: Input.stereoPanLevel.get() };
-        MessagePassing.request(message);
-    }
-}
+    async initialize() {
+        this.currentTab = await TabUtils.getCurrentTab()
+        const canConnect = await this.canConnect(this.currentTab.id)
+        
+        this.setPageInfo(this.currentTab)
 
-class Task {
-    static delay(millisecond){
-        return new Promise((resolve) => {
-            setTimeout(resolve, millisecond);
-        });
-    }
-}
-
-class Data{
-    static currentTab;
-
-    static async initialize(){
-        this.currentTab = await TabManager.getCurrentTab();
-    }
-}
-
-main();
-
-async function main(){
-    await initialize().catch(switchProcessByErrorName);
-}
-
-async function initialize(){
-    await Data.initialize();
-    await MessagePassing.tryConnect();
-    await initializeUI();
-
-    Input.volumeLevel.element.addEventListener("input", MessagePassing.requestPostVolumeLevel, false);
-    Input.stereoPanLevel.element.addEventListener("input", MessagePassing.requestPostStereoPanLevel, false);
-}
-
-async function initializeUI(){
-    initializePageInfoUI();
-    await initializeSettingsUI();
-}
-
-function initializePageInfoUI(){
-    Display.pageTitle.set(Data.currentTab.title);
-    if (Data.currentTab.favIconUrl){
-        Display.pagefavicon.set(Data.currentTab.favIconUrl);
-    } else {
-        ElementManager.replaceToLoadingAnimation(Display.pagefavicon.element);
-    }
-}
-
-async function initializeSettingsUI(){
-    const settingsValue = await MessagePassing.requestSettingsValue();
-    Input.volumeLevel.set(settingsValue.volumeLevel);
-    Display.volumePersent.set(settingsValue.volumeLevel * 10 * 10);
-    Input.stereoPanLevel.set(settingsValue.stereoPanLevel);
-}
-
-function switchProcessByErrorName(error){
-    switch (error.name) {
-        case "ConnectionError": {
-            initializePageInfoUI();
-            notifyInitializeError(error); 
-            break;
+        if (!canConnect) {
+            this.settingsControllerView.hidden = true
+            this.pageInfoView.insertAdjacentHTML(
+                "afterend", PopupView.alertboxHTML
+            )
+            return
         }
-        default: {
-            break;
+
+        const settings = await this.api.getSharedAudioSettings(this.currentTab.id)
+        this.setSharedAudioSettings(settings)
+
+        this.volumeSlider.addEventListener("input", async () => {
+            this.volumeLevelView.textContent = this.volumeSlider.value * 10 *10
+            await this.api.updateSharedAudioVolume(
+                this.currentTab.id,
+                this.volumeSlider.value
+            )
+        }, false)
+        this.panSlider.addEventListener("input", async () => {
+            await this.api.updateSharedAudioPan(
+                this.currentTab.id,
+                this.panSlider.value
+            )
+        }, false)
+    }
+
+    async canConnect(tabId) {
+        const pong = await this.api.ping(tabId).catch((reason) => {
+            if (reason == ConnectionError) {
+                return
+            } else {
+                throw reason
+            }
+        })
+        return pong == "pong" 
+    }
+
+    setPageInfo(pageTab) {
+        this.pageTitleView.textContent = pageTab.title
+        if (pageTab.favIconUrl) {
+            this.pageFaviconView.src = pageTab.favIconUrl
+        } else {
+            this.pageFaviconView.hidden = true
+            this.pageFaviconView.insertAdjacentHTML(
+                "afterend", PopupView.loadingAnimationHTML
+            )
         }
     }
+
+    setSharedAudioSettings(sharedAudioSettings) {
+        this.volumeSlider.value = sharedAudioSettings.volume
+        this.volumeLevelView.textContent = this.volumeSlider.value * 10 * 10
+        this.panSlider.value = sharedAudioSettings.pan
+    }
 }
 
-function notifyInitializeError(error){
-    Block.settings.element.hidden = true;
-    const alertBox = new AlertBox("Error", error.message);
-    alertBox.insertAfter(Block.pageInfo.element);
-}
+const popupView = new PopupView
+popupView.initialize()
