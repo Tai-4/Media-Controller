@@ -17,32 +17,32 @@ class API {
         return await this._sendMessage(tabId, message, ConnectionError)
     }
 
-    async getSharedAudioSettings(tabId) {
+    async getSharedMediaSettings(tabId) {
         const message = {
-            request: "GET AudioSettings"
+            request: "GET MediaSettings"
         }
         return await this._sendMessage(tabId, message)
     }
 
-    async updateSharedAudioVolume(tabId, volume) {
+    async updateSharedMediaVolume(tabId, volume) {
         const message = {
-            request: "UPDATE AudioVolume",
+            request: "UPDATE MediaVolume",
             data: volume
         }
         return await this._sendMessage(tabId, message)
     }
 
-    async updateSharedAudioPan(tabId, pan) {
+    async updateSharedMediaPan(tabId, pan) {
         const message = {
-            request: "UPDATE AudioPan",
+            request: "UPDATE MediaPan",
             data: pan
         }
         return await this._sendMessage(tabId, message)
     }
 
-    async updateSharedAudioSpeed(tabId, speed) {
+    async updateSharedMediaSpeed(tabId, speed) {
         const message = {
-            request: "UPDATE AudioSpeed",
+            request: "UPDATE MediaSpeed",
             data: speed
         }
         return await this._sendMessage(tabId, message)
@@ -100,18 +100,18 @@ class PopupView {
             return
         }
 
-        const settings = await this.api.getSharedAudioSettings(this.currentTab.id)
-        this.setSharedAudioSettings(settings)
+        const settings = await this.api.getSharedMediaSettings(this.currentTab.id)
+        this.setSharedMediaSettings(settings)
 
         this.volumeSlider.addEventListener("input", async () => {
             this.volumeLevelView.textContent = this.volumeSlider.value * 10 *10
-            await this.api.updateSharedAudioVolume(
+            await this.api.updateSharedMediaVolume(
                 this.currentTab.id,
                 this.volumeSlider.value
             )
         }, false)
         this.panSlider.addEventListener("input", async () => {
-            await this.api.updateSharedAudioPan(
+            await this.api.updateSharedMediaPan(
                 this.currentTab.id,
                 this.panSlider.value
             )
@@ -141,10 +141,10 @@ class PopupView {
         }
     }
 
-    setSharedAudioSettings(sharedAudioSettings) {
-        this.volumeSlider.value = sharedAudioSettings.volume
+    setSharedMediaSettings(sharedMediaSettings) {
+        this.volumeSlider.value = sharedMediaSettings.volume
         this.volumeLevelView.textContent = this.volumeSlider.value * 10 * 10
-        this.panSlider.value = sharedAudioSettings.pan
+        this.panSlider.value = sharedMediaSettings.pan
     }
 }
 
