@@ -14,7 +14,8 @@ class API {
         const message = {
             request: "PING"
         }
-        return await this._sendMessage(tabId, message, ConnectionError)
+        const error = new ConnectionError("Connection Failed.")
+        return await this._sendMessage(tabId, message, error)
     }
 
     async getSharedMediaSettings(tabId) {
@@ -48,13 +49,13 @@ class API {
         return await this._sendMessage(tabId, message)
     }
 
-    _sendMessage(tabId, message, errorType = Error) {
+    _sendMessage(tabId, message, error = new Error("Error has occurred in API class")) {
         return new Promise((resolve, reject) => {
             const callback = (response) => {
                 if (chrome.runtime.lastError == undefined) {
                     resolve(response)
                 } else {
-                    reject(errorType)
+                    reject(error)
                 }
             }
             chrome.tabs.sendMessage(tabId, message, callback)
@@ -120,8 +121,8 @@ class PopupView {
 
     async canConnect(tabId) {
         const pong = await this.api.ping(tabId).catch((reason) => {
-            if (reason == ConnectionError) {
-                return
+            if (reason instanceof ConnectionError) {
+                return "not pong"
             } else {
                 throw reason
             }
