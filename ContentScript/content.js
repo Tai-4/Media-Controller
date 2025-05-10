@@ -30,6 +30,7 @@ class Media {
     updateSettings(mediaSettings) {
         this._gainNode.gain.value = mediaSettings.volume
         this._pannerNode.pan.value = mediaSettings.pan
+        this.mediaElement.playbackRate = mediaSettings.speed
         this.mediaSettings = mediaSettings
     }
 }

@@ -83,7 +83,9 @@ class PopupView {
     settingsControllerView = document.getElementsByClassName("settings")[0]
     volumeSlider = document.getElementsByClassName("settings__volume-level-controller__slider")[0]
     panSlider = document.getElementsByClassName("settings__stereo-pan-level-controller__slider")[0]
+    speedSlider = document.getElementsByClassName("settings__speed-level-controller__slider")[0]
     volumeLevelView = document.getElementsByClassName("settings__volume-persent__current")[0]
+    speedLevelView = document.getElementsByClassName("settings__speed-persent__current")[0]
     pageFaviconView = document.getElementsByClassName("page-info__item__favicon")[0]
     pageTitleView = document.getElementsByClassName("page-info__item__title")[0]
     
@@ -105,12 +107,19 @@ class PopupView {
         this.setSharedMediaSettings(settings)
 
         this.volumeSlider.addEventListener("input", async () => {
-            this.volumeLevelView.textContent = this.volumeSlider.value * 10 *10
+            this.volumeLevelView.textContent = this.volumeSlider.value * 10 * 10
             await this.api.updateSharedMediaVolume(
                 this.currentTab.id,
                 this.volumeSlider.value
             )
         }, false)
+        this.speedSlider.addEventListener("input", async () => {
+            this.speedLevelView.textContent = this.speedSlider.value * 10 * 10
+            await this.api.updateSharedMediaSpeed(
+                this.currentTab.id,
+                this.speedSlider.value
+            )
+        })
         this.panSlider.addEventListener("input", async () => {
             await this.api.updateSharedMediaPan(
                 this.currentTab.id,
@@ -145,6 +154,8 @@ class PopupView {
     setSharedMediaSettings(sharedMediaSettings) {
         this.volumeSlider.value = sharedMediaSettings.volume
         this.volumeLevelView.textContent = this.volumeSlider.value * 10 * 10
+        this.speedSlider.value = sharedMediaSettings.speed
+        this.speedLevelView.textContent = this.speedSlider.value * 10 * 10
         this.panSlider.value = sharedMediaSettings.pan
     }
 }

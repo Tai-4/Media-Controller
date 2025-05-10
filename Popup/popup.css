@@ -77,6 +77,33 @@ input[type=range]:focus-visible {
     content: "%";
 }
 
+.settings__speed-level-controller__slider {
+    width: 100%;
+}
+
+.settings__speed-persent {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.settings__speed-persent__min, .settings__speed-persent__max {
+    color: #a0a0a0;
+}
+
+.settings__speed-persent__current {
+    color: #303030;
+    font-weight: bold;
+}
+
+.settings__speed-persent__current::before {
+    content: "Speed: ";
+}
+
+.settings__speed-persent__min::after, .settings__speed-persent__current::after, .settings__speed-persent__max::after {
+    content: "%";
+}
+
 .settings__stereo-pan-level-controller__slider {
     width: 100%;
 }
