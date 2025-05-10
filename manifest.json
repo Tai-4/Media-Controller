@@ -1,8 +1,8 @@
 {
-    "name": "Audio Controller",
+    "name": "Media Controller",
     "version": "2.0.0",
     "manifest_version": 3,
-    "description": "Control the volume, pan, and speed of any audio on a site. This also applies to audio in video.",
+    "description": "Control the volume, pan, and speed of any media on a site.",
     
     "permissions":[
       "declarativeContent",
@@ -19,7 +19,7 @@
     ],
 
     "action": {
-      "default_title": "Video Controller",
+      "default_title": "Media Controller",
       "default_popup": "./Popup/popup.html"
     }
   }
