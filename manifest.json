@@ -1,8 +1,8 @@
 {
-    "name": "Video Volumer",
-    "version": "1.0.0",
+    "name": "Audio Controller",
+    "version": "2.0.0",
     "manifest_version": 3,
-    "description": "Boosts the video volume.",
+    "description": "Control the volume, pan, and speed of any audio on a site. This also applies to audio in video.",
     
     "permissions":[
       "declarativeContent",
@@ -19,7 +19,7 @@
     ],
 
     "action": {
-      "default_title": "Video Volumer",
+      "default_title": "Video Controller",
       "default_popup": "./Popup/popup.html"
     }
   }
