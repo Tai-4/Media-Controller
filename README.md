@@ -1,8 +1,12 @@
-# Video Volumer
-This browser extension allows the volume of the video-tag element to be increased.
-Also, this enables panning a audio in a video, meaning you can change how much audio is played to either ear.
+# Media Controller
+This browser extension allows you to control all media on a site.
+The following list is what you can change
+- volume
+- speed
+- pan (left/right bias of sound)
+
 # Caution
-This will not work well with other extensions providing features that use MediaAudioController.
+This may not work properly with other extensions providing similer features.
 
 # LICENSE
 This project is licensed under the [MIT License]([https://github.com/Tai-4/Video-Volumer/blob/main/LICENSE]).
