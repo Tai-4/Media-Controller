@@ -103,7 +103,7 @@ class ShareControlMediaList extends MediaShareControllable {
     }
 }
 
-class DocumentMediaList extends MediaShareControllable {
+class DocumentMedia extends MediaShareControllable {
     constructor(document, sharedMediaSettings) {
         super()
         this.mediaElementCollection = new ConcatHTMLCollection(
@@ -163,7 +163,7 @@ class ConcatHTMLCollection {
 class NotImplementedError extends Error {}
 
 class Model {
-    documentMediaList = new DocumentMediaList(
+    documentMedia = new DocumentMedia(
         document, new MediaSettings()
     )
 
@@ -172,7 +172,7 @@ class Model {
     }
 
     getMediaSettings() {
-        const mediaSettings = this.documentMediaList.sharedMediaSettings
+        const mediaSettings = this.documentMedia.sharedMediaSettings
         return {
             volume: mediaSettings.volume,
             pan: mediaSettings.pan,
@@ -181,15 +181,15 @@ class Model {
     }
     
     updateMediaVolume(volume) {
-        this.documentMediaList.updateVolume(volume)
+        this.documentMedia.updateVolume(volume)
     }
 
     updateMediaPan(pan) {
-        this.documentMediaList.updatePan(pan)
+        this.documentMedia.updatePan(pan)
     }
 
     updateMediaSpeed(speed) {
-        this.documentMediaList.updateSpeed(speed)
+        this.documentMedia.updateSpeed(speed)
     }
 }
 
