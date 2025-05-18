@@ -104,13 +104,12 @@ class ShareControlMediaList extends MediaShareControllable {
 }
 
 class DocumentMediaList extends MediaShareControllable {
-    mediaElementCollection = new ConcatHTMLCollection(
-        document.getElementsByTagName("audio"),
-        document.getElementsByTagName("video")
-    )
-
-    constructor(sharedMediaSettings) {
+    constructor(document, sharedMediaSettings) {
         super()
+        this.mediaElementCollection = new ConcatHTMLCollection(
+            document.getElementsByTagName("audio"),
+            document.getElementsByTagName("video")
+        )
         this._mediaList = new ShareControlMediaList(
             this.mediaElementCollection.toArray(),
             sharedMediaSettings
@@ -165,7 +164,7 @@ class NotImplementedError extends Error {}
 
 class Model {
     documentMediaList = new DocumentMediaList(
-        new MediaSettings()
+        document, new MediaSettings()
     )
 
     pong() {
