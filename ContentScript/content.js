@@ -120,30 +120,30 @@ class DocumentMedia extends MediaShareControllable {
         return this._mediaList.sharedMediaSettings
     }
 
-    _sync() {
+    _syncMediaList(aliveMediaElementCollection) {
         this._mediaList = new ShareControlMediaList(
-            this.mediaElementCollection.toArray(),
+            aliveMediaElementCollection.toArray(),
             this.sharedMediaSettings
         )
     }
 
-    updateMediaSettings() {
-        this._sync()
-        return this._mediaList.updateMediaSettings()
+    updateMediaSettings(newSettings) {
+        this._syncMediaList(this.mediaElementCollection)
+        return this._mediaList.updateMediaSettings(newSettings)
     }
 
     updateVolume(volume) {
-        this._sync()
+        this._syncMediaList(this.mediaElementCollection)
         return this._mediaList.updateVolume(volume)
     }
 
     updatePan(pan) {
-        this._sync()
+        this._syncMediaList(this.mediaElementCollection)
         return this._mediaList.updatePan(pan)
     }
 
     updateSpeed(speed) {
-        this._sync()
+        this._syncMediaList(this.mediaElementCollection)
         return this._mediaList.updateSpeed(speed)
     }
 }
