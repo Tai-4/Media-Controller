@@ -127,6 +127,15 @@ class DocumentMedia extends MediaShareControllable {
         )
     }
 
+    registerNewDocument(newDocument) {
+        const newCollection = new ConcatHTMLCollection(
+            newDocument.getElementsByTagName("audio"),
+            newDocument.getElementsByTagName("video")
+        )
+        this.mediaElementCollection.concat(newCollection)
+        this.updateMediaSettings(this.sharedMediaSettings)
+    }
+
     updateMediaSettings(newSettings) {
         this._syncMediaList(this.mediaElementCollection)
         return this._mediaList.updateMediaSettings(newSettings)
@@ -151,6 +160,12 @@ class DocumentMedia extends MediaShareControllable {
 class ConcatHTMLCollection {
     constructor(...collections) {
         this.collections = collections
+    }
+
+    concat(newConcatHTMLCollection) {
+        this.collections.push(
+            ...newConcatHTMLCollection.collections
+        )
     }
 
     toArray() {
