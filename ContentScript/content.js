@@ -178,9 +178,25 @@ class ConcatHTMLCollection {
 class NotImplementedError extends Error {}
 
 class Model {
-    documentMedia = new DocumentMedia(
-        document, new MediaSettings()
-    )
+    constructor() {
+        this.documentMedia = new DocumentMedia(
+            document, new MediaSettings()
+        )
+
+        const iframeList = document.querySelectorAll('iframe')
+        iframeList.forEach((iframe) => {
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow.document
+                this.documentMedia.registerNewDocument(doc)
+            } catch (error) {
+                if (error.name == "SecurityError") {
+                    // Do nothing on CORS errors.
+                    return
+                }
+                throw error
+            }
+        })
+    }
 
     pong() {
         return "pong"
