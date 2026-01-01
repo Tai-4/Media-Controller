@@ -1,164 +1,83 @@
-class TabUtils {
-    static async getCurrentTab(){
+(async function() {
+    const getCurrentTab = async () => {
         const queryOptions = { active: true, currentWindow: true };
         const tabList = await chrome.tabs.query(queryOptions);
         const currentTab = tabList[0];
         return currentTab;
     }
-}
+    const tab = await getCurrentTab();
 
-class ConnectionError extends Error {}
-
-class API {
-    async ping(tabId) {
-        const message = {
-            request: "PING"
-        }
-        const error = new ConnectionError("Connection Failed.")
-        return await this._sendMessage(tabId, message, error)
-    }
-
-    async getSharedMediaSettings(tabId) {
-        const message = {
-            request: "GET MediaSettings"
-        }
-        return await this._sendMessage(tabId, message)
-    }
-
-    async updateSharedMediaVolume(tabId, volume) {
-        const message = {
+    const UI = {
+        pageInfoView: document.getElementsByClassName("page-info")[0],
+        settingsView: document.getElementsByClassName("settings")[0],
+        volumeSlider: document.getElementsByClassName("settings__volume-level-controller__slider")[0],
+        panSlider: document.getElementsByClassName("settings__stereo-pan-level-controller__slider")[0],
+        speedSlider: document.getElementsByClassName("settings__speed-level-controller__slider")[0],
+        volumeDisplay: document.getElementsByClassName("settings__volume-persent__current")[0],
+        speedDisplay: document.getElementsByClassName("settings__speed-persent__current")[0],
+        pageFaviconDisplay: document.getElementsByClassName("page-info__item__favicon")[0],
+        pageTitleDisplay: document.getElementsByClassName("page-info__item__title")[0]
+    };
+    UI.volumeSlider.addEventListener("input", async (event) => {
+        const volume = parseFloat(event.target.value);
+        chrome.tabs.sendMessage(tab.id, {
             request: "UPDATE MediaVolume",
-            data: volume
-        }
-        return await this._sendMessage(tabId, message)
-    }
-
-    async updateSharedMediaPan(tabId, pan) {
-        const message = {
-            request: "UPDATE MediaPan",
-            data: pan
-        }
-        return await this._sendMessage(tabId, message)
-    }
-
-    async updateSharedMediaSpeed(tabId, speed) {
-        const message = {
+            data: { volume: volume }
+        });
+    });
+    UI.speedSlider.addEventListener("input", async (event) => {
+        const speed = parseFloat(event.target.value);
+        chrome.tabs.sendMessage(tab.id, {
             request: "UPDATE MediaSpeed",
-            data: speed
+            data: { speed: speed }
+        });
+    });
+    UI.panSlider.addEventListener("input", async (event) => {
+        const pan = parseFloat(event.target.value);
+        chrome.tabs.sendMessage(tab.id, {
+            request: "UPDATE MediaPan",
+            data: { pan: pan }
+        });
+    });
+    UI.pageTitleDisplay.textContent = tab.title;
+    if (tab.favIconUrl) {
+        UI.pageFaviconDisplay.src = tab.favIconUrl;
+    } else {
+        UI.pageFaviconDisplay.hidden = true;
+        UI.pageFaviconDisplay.insertAdjacentHTML(
+            "afterend", `<div class="loading-box page-info__item__favicon"><div class="loading-box__mark" /></div>`
+        );
+    }
+    chrome.runtime.onMessage.addListener((message) => {
+        switch (message.type) {
+            case "VOLUME_UPDATED":
+                UI.volumeSlider.value = message.value;
+                UI.volumeDisplay.textContent = Math.round(message.value * 100);
+                break;
+            case "SPEED_UPDATED":
+                UI.speedSlider.value = message.value;
+                UI.speedDisplay.textContent = Math.round(message.value * 100);
+                break;
+            case "PAN_UPDATED":
+                UI.panSlider.value = message.value;
+                break;
         }
-        return await this._sendMessage(tabId, message)
-    }
+    });
 
-    _sendMessage(tabId, message, error = new Error("Error has occurred in API class")) {
-        return new Promise((resolve, reject) => {
-            const callback = (response) => {
-                if (chrome.runtime.lastError == undefined) {
-                    resolve(response)
-                } else {
-                    reject(error)
-                }
-            }
-            chrome.tabs.sendMessage(tabId, message, callback)
-        })
-    }
-}
-
-class PopupView {
-    static loadingAnimationHTML = `
-        <div class="loading-box page-info__item__favicon">
-            <div class="loading-box__mark" />
-        </div>
-    `
-
-    static alertboxHTML = `
-        <div class="alert-box">
-            <h2 class="heading">Error</h2>
-            <p class="alert-box__detail">Connection failed.</p>
-        </div>
-    `
-
-    api = new API()
-
-    pageInfoView = document.getElementsByClassName("page-info")[0]
-    settingsControllerView = document.getElementsByClassName("settings")[0]
-    volumeSlider = document.getElementsByClassName("settings__volume-level-controller__slider")[0]
-    panSlider = document.getElementsByClassName("settings__stereo-pan-level-controller__slider")[0]
-    speedSlider = document.getElementsByClassName("settings__speed-level-controller__slider")[0]
-    volumeLevelView = document.getElementsByClassName("settings__volume-persent__current")[0]
-    speedLevelView = document.getElementsByClassName("settings__speed-persent__current")[0]
-    pageFaviconView = document.getElementsByClassName("page-info__item__favicon")[0]
-    pageTitleView = document.getElementsByClassName("page-info__item__title")[0]
-    
-    async initialize() {
-        this.currentTab = await TabUtils.getCurrentTab()
-        const canConnect = await this.canConnect(this.currentTab.id)
-        
-        this.setPageInfo(this.currentTab)
-
-        if (!canConnect) {
-            this.settingsControllerView.hidden = true
-            this.pageInfoView.insertAdjacentHTML(
-                "afterend", PopupView.alertboxHTML
-            )
-            return
-        }
-
-        const settings = await this.api.getSharedMediaSettings(this.currentTab.id)
-        this.setSharedMediaSettings(settings)
-
-        this.volumeSlider.addEventListener("input", async () => {
-            this.volumeLevelView.textContent = this.volumeSlider.value * 10 * 10
-            await this.api.updateSharedMediaVolume(
-                this.currentTab.id,
-                this.volumeSlider.value
-            )
-        }, false)
-        this.speedSlider.addEventListener("input", async () => {
-            this.speedLevelView.textContent = this.speedSlider.value * 10 * 10
-            await this.api.updateSharedMediaSpeed(
-                this.currentTab.id,
-                this.speedSlider.value
-            )
-        })
-        this.panSlider.addEventListener("input", async () => {
-            await this.api.updateSharedMediaPan(
-                this.currentTab.id,
-                this.panSlider.value
-            )
-        }, false)
-    }
-
-    async canConnect(tabId) {
-        const pong = await this.api.ping(tabId).catch((reason) => {
-            if (reason instanceof ConnectionError) {
-                return "not pong"
-            } else {
-                throw reason
-            }
-        })
-        return pong == "pong" 
-    }
-
-    setPageInfo(pageTab) {
-        this.pageTitleView.textContent = pageTab.title
-        if (pageTab.favIconUrl) {
-            this.pageFaviconView.src = pageTab.favIconUrl
+    chrome.tabs.sendMessage(tab.id, { request: "PING" }, (response) => {
+        if (chrome.runtime.lastError == undefined) {
+            chrome.tabs.sendMessage(tab.id, { request: "GET MediaSettings" }, (response) => {
+                UI.volumeSlider.value = response.volume;
+                UI.speedSlider.value = response.speed;
+                UI.panSlider.value = response.pan;
+                UI.volumeDisplay.textContent = Math.round(response.volume * 100);
+                UI.speedDisplay.textContent = Math.round(response.speed * 100);
+            });
         } else {
-            this.pageFaviconView.hidden = true
-            this.pageFaviconView.insertAdjacentHTML(
-                "afterend", PopupView.loadingAnimationHTML
-            )
+            UI.settingsView.hidden = true;
+            UI.pageInfoView.insertAdjacentHTML(
+                "afterend", `<div class="alert-box"><h2 class="heading">Error</h2><p class="alert-box__detail">Connection failed.</p></div>`
+            );
         }
-    }
-
-    setSharedMediaSettings(sharedMediaSettings) {
-        this.volumeSlider.value = sharedMediaSettings.volume
-        this.volumeLevelView.textContent = this.volumeSlider.value * 10 * 10
-        this.speedSlider.value = sharedMediaSettings.speed
-        this.speedLevelView.textContent = this.speedSlider.value * 10 * 10
-        this.panSlider.value = sharedMediaSettings.pan
-    }
-}
-
-const popupView = new PopupView
-popupView.initialize()
+    });
+})();
