@@ -3,12 +3,12 @@
     "version": "2.0.0",
     "manifest_version": 3,
     "description": "Control the volume, pan, and speed of any media on a site.",
-    
+
     "permissions":[
       "declarativeContent",
       "tabs"
     ],
-  
+
     "content_scripts": [
       {
         "matches": ["<all_urls>"],
@@ -23,4 +23,3 @@
       "default_popup": "./Popup/popup.html"
     }
   }
-  
