@@ -36,16 +36,79 @@ class MediaState {
             data.pan == undefined ? this.pan : data.pan
         );
     }
+
+    equals(other) {
+        return this.volume == other.volume && this.speed == other.speed && this.pan == other.pan;
+    }
+}
+
+class MediaStateStore extends EventTarget {
+    _mediaState = new MediaState();
+
+    get state() { return this._mediaState; }
+
+    _update(mediaState) {
+        if (this._mediaState.equals(mediaState)) {
+            return;
+        }
+
+        this._mediaState = mediaState;
+        this.dispatchEvent(new CustomEvent('onMediaStateChange', { detail: { newState: this.state } }));
+    }
+
+    updateVolume(volume) {
+        const newState = this._mediaState.copy({ volume: volume });
+        if (this.state != newState) {
+            this._update(newState);
+            this.dispatchEvent(new CustomEvent('onMediaVolumeChange', { detail: { newVolume: volume } }));
+        }
+    }
+
+    updateSpeed(speed) {
+        const newState = this._mediaState.copy({ speed: speed });
+        if (this.state != newState) {
+            this._update(newState);
+            this.dispatchEvent(new CustomEvent('onMediaSpeedChange', { detail: { newSpeed: speed } }));
+        }
+    }
+
+    updatePan(pan) {
+        const newState = this._mediaState.copy({ pan: pan });
+        if (this.state != newState) {
+            this._update(newState);
+            this.dispatchEvent(new CustomEvent('onMediaPanChange', { detail: { newPan: pan } }));
+        }
+    }
+
 }
 
 (() => {
-    let mediaState = new MediaState();
+    const mediaStateStore = new MediaStateStore();
     const mediaContext = new (window.AudioContext || window.webkitAudioContext);
     const shareGainNode = mediaContext.createGain();
     const sharePannerNode = new StereoPannerNode(
         mediaContext,
-        { pan: mediaState.pan }
+        { pan: mediaStateStore.state.pan }
     );
+
+    mediaStateStore.addEventListener('onMediaVolumeChange', (event) => {
+        chrome.runtime.sendMessage({
+            type: "VOLUME_UPDATED",
+            value: event.detail.newVolume
+        });
+    });
+    mediaStateStore.addEventListener('onMediaSpeedChange', (event) => {
+        chrome.runtime.sendMessage({
+            type: "SPEED_UPDATED",
+            value: event.detail.newSpeed
+        });
+    });
+    mediaStateStore.addEventListener('onMediaPanChange', (event) => {
+        chrome.runtime.sendMessage({
+            type: "PAN_UPDATED",
+            value: event.detail.newPan
+        });
+    })
 
     const mediaElementSourceSet = new WeakSet();
     const createMediaElementSourceIfNeeded = (nodeList, callback) => {
@@ -66,7 +129,7 @@ class MediaState {
                 .connect(shareGainNode)
                 .connect(sharePannerNode)
                 .connect(mediaContext.destination);
-            source.mediaElement.playbackRate = mediaState.speed;
+            source.mediaElement.playbackRate = mediaStateStore.state.speed;
         });
         switch (message.request) {
             case "PING":
@@ -74,38 +137,26 @@ class MediaState {
                 break;
             case "GET MediaSettings":
                 const response = {
-                    volume: mediaState.volume,
-                    speed: mediaState.speed,
-                    pan: mediaState.pan
+                    volume: mediaStateStore.state.volume,
+                    speed: mediaStateStore.state.speed,
+                    pan: mediaStateStore.state.pan
                 };
                 sendResponse(response);
                 break;
             case "UPDATE MediaVolume":
-                mediaState = mediaState.copy({volume: message.data.volume});
-                shareGainNode.gain.value = mediaState.volume;
-                chrome.runtime.sendMessage({
-                    type: "VOLUME_UPDATED",
-                    value: mediaState.volume
-                });
+                mediaStateStore.updateVolume(message.data.volume);
+                shareGainNode.gain.value = mediaStateStore.state.volume;
                 break;
             case "UPDATE MediaSpeed":
-                mediaState = mediaState.copy({speed: message.data.speed});
+                mediaStateStore.updateSpeed(message.data.speed);
                 const mediaElementNodeList = document.querySelectorAll("audio, video");
                 mediaElementNodeList.forEach((mediaElement) => {
-                    mediaElement.playbackRate = mediaState.speed;
-                });
-                chrome.runtime.sendMessage({
-                    type: "SPEED_UPDATED",
-                    value: mediaState.speed
+                    mediaElement.playbackRate = mediaStateStore.state.speed;
                 });
                 break;
             case "UPDATE MediaPan":
-                mediaState = mediaState.copy({pan: message.data.pan});
-                sharePannerNode.pan.value = mediaState.pan;
-                chrome.runtime.sendMessage({
-                    type: "PAN_UPDATED",
-                    value: mediaState.pan
-                });
+                mediaStateStore.updatePan(message.data.pan);
+                sharePannerNode.pan.value = mediaStateStore.state.pan;
                 break;
         }
     });
@@ -116,6 +167,6 @@ class MediaState {
             .connect(shareGainNode)
             .connect(sharePannerNode)
             .connect(mediaContext.destination);
-        source.mediaElement.playbackRate = mediaState.speed;
+        source.mediaElement.playbackRate = mediaStateStore.state.speed;
     });
 })();
