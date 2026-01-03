@@ -1,28 +1,28 @@
 class MediaState {
-    defaultVolume = 1.0;
-    defaultSpeed = 1.0;
-    defaultPan = 0.0;
+    static defaultVolume = 1.0;
+    static defaultSpeed = 1.0;
+    static defaultPan = 0.0;
 
-    minVolumeLimit = 0.0;
-    minPanLimit = -1.0;
-    maxPanLimit = 1.0;
-    minSpeedLimit = 0.0;
-    maxSpeedLimit = 16.0;
+    static minVolumeLimit = 0.0;
+    static minPanLimit = -1.0;
+    static maxPanLimit = 1.0;
+    static minSpeedLimit = 0.0;
+    static maxSpeedLimit = 16.0;
 
     constructor(volume, speed, pan) {
         volume = parseFloat(volume);
         speed = parseFloat(speed);
         pan = parseFloat(pan);
 
-        if (isNaN(volume)) volume = this.defaultVolume;
-        if (isNaN(speed)) speed = this.defaultSpeed;
-        if (isNaN(pan)) pan = this.defaultPan;
+        if (isNaN(volume)) volume = MediaState.defaultVolume;
+        if (isNaN(speed)) speed = MediaState.defaultSpeed;
+        if (isNaN(pan)) pan = MediaState.defaultPan;
 
-        if (volume < this.minVolumeLimit) volume = this.minVolumeLimit;
-        if (speed < this.minSpeedLimit) speed = this.minSpeedLimit;
-        if (speed > this.maxSpeedLimit) speed = this.maxSpeedLimit;
-        if (pan < this.minPanLimit) pan = this.minPanLimit;
-        if (pan > this.maxPanLimit) pan = this.maxPanLimit;
+        if (volume < MediaState.minVolumeLimit) volume = MediaState.minVolumeLimit;
+        if (speed < MediaState.minSpeedLimit) speed = MediaState.minSpeedLimit;
+        if (speed > MediaState.maxSpeedLimit) speed = MediaState.maxSpeedLimit;
+        if (pan < MediaState.minPanLimit) pan = MediaState.minPanLimit;
+        if (pan > MediaState.maxPanLimit) pan = MediaState.maxPanLimit;
 
         this.volume = volume;
         this.speed = speed;
