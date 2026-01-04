@@ -81,63 +81,116 @@ class MediaStateStore extends EventTarget {
     }
 }
 
-class EmptyUIAdapter {
-    run() {}
-}
-
-class YoutubeUIAdapter {
-    buttonHTML = `
+class YoutubeSpeedControllerElement {
+    controllerHTML = `
         <yt-button-view-model class="ytd-menu-renderer">
             <button-view-model class="ytSpecButtonViewModelHost style-scope ytd-menu-renderer">
-                <button class="yt-spec-button-shape-next yt-spec-button-shape-next--tonal yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment" title="" aria-label="Speed" aria-disabled="false" style="">
+                <button id="mc-speed-controller" class="yt-spec-button-shape-next yt-spec-button-shape-next--tonal yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment" title="" aria-label="Speed" aria-disabled="false" style="">
                     <div class="yt-spec-button-shape-next__button-text-content"></div>
                 </button>
             </button-view-model>
         </yt-button-view-model>
     `;
-    buttonInjectTargetSelector = '#top-level-buttons-computed';
 
-    run(mediaStateStore, clickCallback, wheelCallback) {
-        window.addEventListener('yt-page-data-updated', async () => {
-            const button = this.injectSpeedButton(mediaStateStore, clickCallback, wheelCallback);
-            if (button == null) {
-                setTimeout(() => {
-                    this.injectSpeedButton(mediaStateStore, clickCallback, wheelCallback);
-                }, 3000);
-            }
-        });
+    constructor(mediaStateStore, clickCallback, wheelCallback) {
+        this._mediaStateStore = mediaStateStore;
+        this._clickCallback = clickCallback;
+        this._wheelCallback = wheelCallback;
+        this._onMediaSpeedChangeListener = (event) => {
+            this._drawCurrentMediaSpeed(event.detail.newSpeed);
+        };
     }
 
-    injectSpeedButton(mediaStateStore, clickCallback, wheelCallback) {
-        const targetNode = document.querySelector(this.buttonInjectTargetSelector);
-        if (!targetNode) {
+    inject(targetElement) {
+        if (!targetElement) {
             return null;
         }
 
-        targetNode.insertAdjacentHTML('beforeend', this.buttonHTML);
-        const buttonElement = targetNode.lastElementChild;
-        const buttonTextContent = buttonElement.querySelector('.yt-spec-button-shape-next__button-text-content');
-        buttonTextContent.textContent = this._formatSpeedText(mediaStateStore.state.speed);
-        buttonElement.addEventListener('click', () => {
-            if (buttonTextContent) {
-                clickCallback();
-            }
+        targetElement.insertAdjacentHTML('beforeend', this.controllerHTML);
+        const controller = document.getElementById('mc-speed-controller');
+        if (!controller) {
+            return null;
+        }
+
+        controller.addEventListener('click', () => {
+            this._clickCallback();
         });
-        buttonElement.addEventListener('wheel', (event) => {
-            if (buttonTextContent) {
-                event.preventDefault();
-                wheelCallback(event.deltaY);
-            }
-        });
-        mediaStateStore.addEventListener('onMediaSpeedChange', (event) => {
-            buttonTextContent.textContent = this._formatSpeedText(event.detail.newSpeed);
+        controller.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            this._wheelCallback(event.deltaY);
         });
 
-        return buttonElement;
+        this._drawCurrentMediaSpeed(this._mediaStateStore.state.speed);
+        this._mediaStateStore.addEventListener('onMediaSpeedChange', this._onMediaSpeedChangeListener);
+
+        return controller;
+    }
+
+    remove() {
+        const controller = document.getElementById('mc-speed-controller');
+        if (!controller) {
+            return;
+        }
+
+        const frame = controller.parentElement.parentElement;
+        if (frame) {
+            frame.remove();
+        }
+        this._mediaStateStore.removeEventListener('onMediaSpeedChange', this._onMediaSpeedChangeListener);
     }
 
     _formatSpeedText(speed) {
         return `${speed.toFixed(1)}x`;
+    }
+
+    _drawCurrentMediaSpeed(speed) {
+        const controller = document.getElementById('mc-speed-controller');
+        const speedText = controller.querySelector('.yt-spec-button-shape-next__button-text-content');
+        speedText.textContent = this._formatSpeedText(speed);
+    }
+}
+
+class EmptySpeedControllerElement {
+    inject() {}
+    remove() {}
+}
+
+class SpeedControllerElementFactory {
+    static emptySpeedController = new EmptySpeedControllerElement();
+
+    static getSpeedControllerElementForHost(hostName, mediaStateStore, clickCallback, wheelCallback) {
+        if (hostName.endsWith('youtube.com')) {
+            return new YoutubeSpeedControllerElement(mediaStateStore, clickCallback, wheelCallback);
+        }
+        return this.emptySpeedController;
+    }
+}
+
+class EmptyUIAdapter {
+    run() {}
+}
+
+class YoutubeUIAdapter {
+    run(speedControllerElement) {
+        window.addEventListener('yt-page-data-updated', async () => {
+            if (this._isWatchPage()) {
+                const injectTarget = this._findSpeedControllerInjectTarget();
+                speedControllerElement.inject(injectTarget);
+            } else {
+                speedControllerElement.remove();
+            }
+        });
+    }
+
+    _findSpeedControllerInjectTarget() {
+        // There are many elements which have #top-level-buttons-computed.
+        // Only the element within ytd-watch-metadata are required.
+        return document.querySelector('ytd-watch-metadata #top-level-buttons-computed');
+    }
+
+    _isWatchPage() {
+        const url = new URL(window.location.href);
+        return url.pathname === '/watch'
     }
 }
 
@@ -240,14 +293,14 @@ class AdapterFactory {
         source.mediaElement.playbackRate = mediaStateStore.state.speed;
     });
 
-    const speedButtonClickCallback = () => {
+    const speedControllerClickCallback = () => {
         mediaStateStore.updateSpeed(MediaState.defaultSpeed);
         const mediaElementNodeList = document.querySelectorAll("audio, video");
         mediaElementNodeList.forEach((mediaElement) => {
             mediaElement.playbackRate = mediaStateStore.state.speed;
         });
     }
-    const speedButtonWheelCallback = (delta) => {
+    const speedControllerWheelCallback = (delta) => {
         let newSpeed = Math.round((mediaStateStore.state.speed - (delta * 0.001)) * 10) / 10;
         if (newSpeed < MediaState.minSpeedLimit) {
             newSpeed = MediaState.minSpeedLimit;
@@ -263,5 +316,8 @@ class AdapterFactory {
     };
 
     const UIAdapter = AdapterFactory.getAdapterForHost(window.location.hostname);
-    UIAdapter.run(mediaStateStore, speedButtonClickCallback, speedButtonWheelCallback);
+    const speedControllerElement = SpeedControllerElementFactory.getSpeedControllerElementForHost(
+        window.location.hostname, mediaStateStore, speedControllerClickCallback, speedControllerWheelCallback
+    );
+    UIAdapter.run(speedControllerElement);
 })();
