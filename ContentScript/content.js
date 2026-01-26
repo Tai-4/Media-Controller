@@ -207,7 +207,7 @@ class AdapterFactory {
 
 (() => {
     const mediaStateStore = new MediaStateStore();
-    const mediaContext = new (window.AudioContext || window.webkitAudioContext);
+    const mediaContext = new (window.AudioContext || window.webkitAudioContext)();
     const shareGainNode = mediaContext.createGain();
     const sharePannerNode = new StereoPannerNode(
         mediaContext,
