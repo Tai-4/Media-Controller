@@ -234,8 +234,8 @@ class AdapterFactory {
     })
 
     const mediaElementSourceSet = new WeakSet();
-    const createMediaElementSourceIfNeeded = (nodeList, callback) => {
-        nodeList.forEach((mediaElement) => {
+    const createMediaElementSourceIfNeeded = (mediaElements, callback) => {
+        mediaElements.forEach((mediaElement) => {
             if (mediaElementSourceSet.has(mediaElement)) {
                 return;
             } else {
@@ -245,6 +245,19 @@ class AdapterFactory {
             }
         });
     };
+    const getAllMediaElements = () => {
+        const mediaElements = Array.from(document.querySelectorAll("audio, video"));
+        const iframes = document.querySelectorAll("iframe");
+        iframes.forEach((iframe) => {
+            try {
+                const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                mediaElements.push(...iframeDocument.querySelectorAll("audio, video"));
+            } catch (e) {
+                // Ignore cross-origin iframe access errors
+            }
+        });
+        return mediaElements;
+    }
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const mediaElements = getAllMediaElements();
         
@@ -291,8 +304,8 @@ class AdapterFactory {
 
     const speedControllerClickCallback = () => {
         mediaStateStore.updateSpeed(MediaState.defaultSpeed);
-        const mediaElementNodeList = document.querySelectorAll("audio, video");
-        mediaElementNodeList.forEach((mediaElement) => {
+        const mediaElements = getAllMediaElements();
+        mediaElements.forEach((mediaElement) => {
             mediaElement.playbackRate = mediaStateStore.state.speed;
         });
     }
@@ -305,8 +318,8 @@ class AdapterFactory {
         }
 
         mediaStateStore.updateSpeed(newSpeed);
-        const mediaElementNodeList = document.querySelectorAll("audio, video");
-        mediaElementNodeList.forEach((mediaElement) => {
+        const mediaElements = getAllMediaElements();
+        mediaElements.forEach((mediaElement) => {
             mediaElement.playbackRate = mediaStateStore.state.speed;
         });
     };
