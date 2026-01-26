@@ -246,14 +246,8 @@ class AdapterFactory {
         });
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        const mediaElementNodeList = document.querySelectorAll("audio, video");
-        createMediaElementSourceIfNeeded(mediaElementNodeList, (source) => {
-            source
-                .connect(shareGainNode)
-                .connect(sharePannerNode)
-                .connect(mediaContext.destination);
-            source.mediaElement.playbackRate = mediaStateStore.state.speed;
-        });
+        const mediaElements = getAllMediaElements();
+        
         switch (message.request) {
             case "PING":
                 sendResponse({ response: "PONG" });
@@ -267,30 +261,32 @@ class AdapterFactory {
                 sendResponse(response);
                 break;
             case "UPDATE MediaVolume":
+                createMediaElementSourceIfNeeded(mediaElements, (source) => {
+                    source
+                        .connect(shareGainNode)
+                        .connect(sharePannerNode)
+                        .connect(mediaContext.destination);
+                });
                 mediaStateStore.updateVolume(message.data.volume);
                 shareGainNode.gain.value = mediaStateStore.state.volume;
                 break;
             case "UPDATE MediaSpeed":
                 mediaStateStore.updateSpeed(message.data.speed);
-                const mediaElementNodeList = document.querySelectorAll("audio, video");
-                mediaElementNodeList.forEach((mediaElement) => {
+                mediaElements.forEach((mediaElement) => {
                     mediaElement.playbackRate = mediaStateStore.state.speed;
                 });
                 break;
             case "UPDATE MediaPan":
+                createMediaElementSourceIfNeeded(mediaElements, (source) => {
+                    source
+                        .connect(shareGainNode)
+                        .connect(sharePannerNode)
+                        .connect(mediaContext.destination);
+                });
                 mediaStateStore.updatePan(message.data.pan);
                 sharePannerNode.pan.value = mediaStateStore.state.pan;
                 break;
         }
-    });
-
-    const mediaElementNodeList = document.querySelectorAll("audio, video");
-    createMediaElementSourceIfNeeded(mediaElementNodeList, (source) => {
-        source
-            .connect(shareGainNode)
-            .connect(sharePannerNode)
-            .connect(mediaContext.destination);
-        source.mediaElement.playbackRate = mediaStateStore.state.speed;
     });
 
     const speedControllerClickCallback = () => {
