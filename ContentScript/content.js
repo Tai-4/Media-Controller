@@ -92,9 +92,10 @@ class YoutubeSpeedControllerElement {
         </yt-button-view-model>
     `;
 
-    constructor(mediaStateStore, clickCallback, wheelCallback) {
+    constructor(mediaStateStore, clickCallback, dblClickCallback, wheelCallback) {
         this._mediaStateStore = mediaStateStore;
         this._clickCallback = clickCallback;
+        this._dblClickCallback = dblClickCallback;
         this._wheelCallback = wheelCallback;
         this._onMediaSpeedChangeListener = (event) => {
             this._drawCurrentMediaSpeed(event.detail.newSpeed);
@@ -115,10 +116,13 @@ class YoutubeSpeedControllerElement {
         controller.addEventListener('click', () => {
             this._clickCallback();
         });
+        controller.addEventListener('dblclick', () => {
+            this._dblClickCallback();
+        });
         controller.addEventListener('wheel', (event) => {
             event.preventDefault();
             this._wheelCallback(event.deltaY);
-        });
+        })
 
         this._drawCurrentMediaSpeed(this._mediaStateStore.state.speed);
         this._mediaStateStore.addEventListener('onMediaSpeedChange', this._onMediaSpeedChangeListener);
@@ -158,9 +162,9 @@ class EmptySpeedControllerElement {
 class SpeedControllerElementFactory {
     static emptySpeedController = new EmptySpeedControllerElement();
 
-    static getSpeedControllerElementForHost(hostName, mediaStateStore, clickCallback, wheelCallback) {
+    static getSpeedControllerElementForHost(hostName, mediaStateStore, clickCallback, dblClickCallback, wheelCallback) {
         if (hostName.endsWith('youtube.com')) {
-            return new YoutubeSpeedControllerElement(mediaStateStore, clickCallback, wheelCallback);
+            return new YoutubeSpeedControllerElement(mediaStateStore, clickCallback, dblClickCallback, wheelCallback);
         }
         return this.emptySpeedController;
     }
@@ -260,7 +264,7 @@ class AdapterFactory {
     }
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const mediaElements = getAllMediaElements();
-        
+
         switch (message.request) {
             case "PING":
                 sendResponse({ response: "PONG" });
@@ -309,6 +313,13 @@ class AdapterFactory {
             mediaElement.playbackRate = mediaStateStore.state.speed;
         });
     }
+    const speedControllerDblClickCallback = () => {
+        mediaStateStore.updateSpeed(MediaState.maxSpeedLimit);
+        const mediaElements = getAllMediaElements();
+        mediaElements.forEach((mediaElement) => {
+            mediaElement.playbackRate = mediaStateStore.state.speed;
+        });
+    }
     const speedControllerWheelCallback = (delta) => {
         let newSpeed = Math.round((mediaStateStore.state.speed - (delta * 0.001)) * 10) / 10;
         if (newSpeed < MediaState.minSpeedLimit) {
@@ -326,7 +337,7 @@ class AdapterFactory {
 
     const UIAdapter = AdapterFactory.getAdapterForHost(window.location.hostname);
     const speedControllerElement = SpeedControllerElementFactory.getSpeedControllerElementForHost(
-        window.location.hostname, mediaStateStore, speedControllerClickCallback, speedControllerWheelCallback
+        window.location.hostname, mediaStateStore, speedControllerClickCallback, speedControllerDblClickCallback, speedControllerWheelCallback
     );
     UIAdapter.run(speedControllerElement);
 })();
