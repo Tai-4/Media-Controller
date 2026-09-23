@@ -4,22 +4,19 @@
     "manifest_version": 3,
     "description": "Control the volume, pan, and speed of any media on a site.",
 
-    "permissions":[
-      "declarativeContent",
-      "tabs"
+    "permissions": [
+      "activeTab"
     ],
 
     "content_scripts": [
       {
         "matches": ["<all_urls>"],
-        "js": [
-          "./ContentScript/content.js"
-        ]
+        "js": ["content.js"]
       }
     ],
 
     "action": {
       "default_title": "Media Controller",
-      "default_popup": "./Popup/popup.html"
+      "default_popup": "popup/popup.html"
     }
   }
