@@ -1,18 +1,25 @@
 import { UpdateSource } from '../media-store.js';
 import { DEFAULT_SPEED, speedAfterWheel, toggledMaxSpeed } from '../speed-commands.js';
 
-// YouTube's button component drops the `id` of cloned elements, so a data attribute marks ours.
+// Our own markers. YouTube's button component drops the `id` of cloned elements,
+// and its class names change over time, so data attributes are used instead.
 const BUTTON_MARKER_ATTRIBUTE = 'data-mc-speed-controller';
+const SPEED_TEXT_ATTRIBUTE = 'data-mc-speed-text';
+
 const WATCH_METADATA_SELECTOR = 'ytd-watch-metadata';
 // There are many elements which have #top-level-buttons-computed.
 // Only the element within ytd-watch-metadata is the target.
 const INJECT_TARGET_SELECTOR = `${WATCH_METADATA_SELECTOR} #top-level-buttons-computed`;
 const TEMPLATE_BUTTON_SELECTOR = 'ytd-menu-renderer yt-button-view-model';
-const BUTTON_TEXT_CLASS = 'ytSpecButtonShapeNextButtonTextContent';
-const BUTTON_TEXT_SELECTOR = `.${BUTTON_TEXT_CLASS}`;
+const YOUTUBE_BUTTON_TEXT_CLASS = 'ytSpecButtonShapeNextButtonTextContent';
 
 const POLL_INTERVAL_MS = 100;
 const POLL_TIMEOUT_MS = 10_000;
+
+// Warnings point at the selector that no longer matches when YouTube changes its page structure.
+function warn(message) {
+    console.warn(`[Media Controller] YouTube speed button: ${message}`);
+}
 
 /** Adds a speed button next to the like/share buttons on watch pages. */
 export const youtubeIntegration = {
@@ -24,12 +31,16 @@ function formatSpeed(speed) {
     return `${speed.toFixed(1)}x`;
 }
 
-/** Clones one of YouTube's own buttons so that the speed button matches its look. */
+/**
+ * Clones one of YouTube's own buttons so that the speed button matches its look.
+ * Falls back to a self-styled button when there is nothing to clone.
+ */
 function createButton(speedText) {
     const templateHost = document.querySelector(TEMPLATE_BUTTON_SELECTOR);
     const templateButton = templateHost?.querySelector('button');
     if (!templateButton) {
-        return null;
+        warn(`template button not found (${TEMPLATE_BUTTON_SELECTOR} button); using a fallback button.`);
+        return createFallbackButton(speedText);
     }
 
     // Only the plain <button> is cloned, wrapped in a plain <div>. A clone of YouTube's button
@@ -47,14 +58,46 @@ function createButton(speedText) {
     // Drop the icon styles and make sure there is a label, so the speed is always visible.
     button.classList.remove('ytSpecButtonShapeNextIconLeading', 'ytSpecButtonShapeNextIconButton');
     button.querySelector('.ytSpecButtonShapeNextIcon')?.remove();
-    let textElement = button.querySelector(BUTTON_TEXT_SELECTOR);
+    let textElement = button.querySelector(`.${YOUTUBE_BUTTON_TEXT_CLASS}`);
     if (!textElement) {
         textElement = document.createElement('div');
-        textElement.className = BUTTON_TEXT_CLASS;
+        textElement.className = YOUTUBE_BUTTON_TEXT_CLASS;
         button.prepend(textElement);
     }
+    textElement.setAttribute(SPEED_TEXT_ATTRIBUTE, '');
     textElement.textContent = speedText;
 
+    wrapper.append(button);
+    return wrapper;
+}
+
+/** A button that does not depend on YouTube's classes. Colors follow YouTube's theme variables when present. */
+function createFallbackButton(speedText) {
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute(BUTTON_MARKER_ATTRIBUTE, '');
+    wrapper.style.display = 'inline-flex';
+    wrapper.style.marginLeft = '8px';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Speed Controller');
+    Object.assign(button.style, {
+        height: '40px',
+        padding: '0 16px',
+        border: 'none',
+        borderRadius: '20px',
+        background: 'var(--yt-spec-badge-chip-background, rgba(128, 128, 128, 0.2))',
+        color: 'var(--yt-spec-text-primary, currentColor)',
+        font: '500 14px Roboto, Arial, sans-serif',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+    });
+
+    const textElement = document.createElement('span');
+    textElement.setAttribute(SPEED_TEXT_ATTRIBUTE, '');
+    textElement.textContent = speedText;
+
+    button.append(textElement);
     wrapper.append(button);
     return wrapper;
 }
@@ -95,6 +138,8 @@ class YoutubeSpeedButton {
                 onFound(target);
             } else if (Date.now() < deadline) {
                 this.#pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+            } else {
+                warn(`inject target not found within ${POLL_TIMEOUT_MS / 1000}s (${INJECT_TARGET_SELECTOR}).`);
             }
         };
         poll();
@@ -111,9 +156,6 @@ class YoutubeSpeedButton {
             document.querySelector(`[${BUTTON_MARKER_ATTRIBUTE}]`)?.remove();
 
             this.#button = createButton(formatSpeed(this.#store.state.speed));
-            if (!this.#button) {
-                return;
-            }
             this.#button.addEventListener('click', (event) => this.#onClick(event));
             this.#button.addEventListener('dblclick', () => this.#onDoubleClick());
             this.#button.addEventListener('wheel', (event) => {
@@ -166,7 +208,7 @@ class YoutubeSpeedButton {
     }
 
     #render(state) {
-        const textElement = this.#button?.querySelector(BUTTON_TEXT_SELECTOR);
+        const textElement = this.#button?.querySelector(`[${SPEED_TEXT_ATTRIBUTE}]`);
         if (textElement) {
             textElement.textContent = formatSpeed(state.speed);
         }
