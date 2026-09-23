@@ -8,7 +8,8 @@ const WATCH_METADATA_SELECTOR = 'ytd-watch-metadata';
 // Only the element within ytd-watch-metadata is the target.
 const INJECT_TARGET_SELECTOR = `${WATCH_METADATA_SELECTOR} #top-level-buttons-computed`;
 const TEMPLATE_BUTTON_SELECTOR = 'ytd-menu-renderer yt-button-view-model';
-const BUTTON_TEXT_SELECTOR = '.ytSpecButtonShapeNextButtonTextContent';
+const BUTTON_TEXT_CLASS = 'ytSpecButtonShapeNextButtonTextContent';
+const BUTTON_TEXT_SELECTOR = `.${BUTTON_TEXT_CLASS}`;
 
 const POLL_INTERVAL_MS = 100;
 const POLL_TIMEOUT_MS = 10_000;
@@ -44,12 +45,17 @@ function createButton(speedText) {
     const button = templateButton.cloneNode(true);
     button.setAttribute('aria-label', 'Speed Controller');
     button.removeAttribute('title');
-    button.classList.remove('ytSpecButtonShapeNextIconLeading');
+    // When space is short YouTube collapses its buttons to fixed-width icon buttons without a label.
+    // Drop the icon styles and make sure there is a label, so the speed is always visible.
+    button.classList.remove('ytSpecButtonShapeNextIconLeading', 'ytSpecButtonShapeNextIconButton');
     button.querySelector('.ytSpecButtonShapeNextIcon')?.remove();
-    const textElement = button.querySelector(BUTTON_TEXT_SELECTOR);
-    if (textElement) {
-        textElement.textContent = speedText;
+    let textElement = button.querySelector(BUTTON_TEXT_SELECTOR);
+    if (!textElement) {
+        textElement = document.createElement('div');
+        textElement.className = BUTTON_TEXT_CLASS;
+        button.prepend(textElement);
     }
+    textElement.textContent = speedText;
 
     wrapper.append(button);
     return wrapper;
