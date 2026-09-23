@@ -13,8 +13,6 @@ const BUTTON_TEXT_SELECTOR = `.${BUTTON_TEXT_CLASS}`;
 
 const POLL_INTERVAL_MS = 100;
 const POLL_TIMEOUT_MS = 10_000;
-// A single click waits this long so that it can be told apart from a double click.
-const SINGLE_CLICK_DELAY_MS = 250;
 
 /** Adds a speed button next to the like/share buttons on watch pages. */
 export const youtubeIntegration = {
@@ -66,7 +64,7 @@ class YoutubeSpeedButton {
     #button = null;
     #unsubscribe = null;
     #pollTimer = null;
-    #clickTimer = null;
+    #speedBeforeClick = null;
     // YouTube re-renders the buttons after navigation and may drop ours; this puts it back.
     #reattachObserver = new MutationObserver(() => this.#reattach());
 
@@ -141,7 +139,6 @@ class YoutubeSpeedButton {
 
     #remove() {
         this.#reattachObserver.disconnect();
-        clearTimeout(this.#clickTimer);
         this.#unsubscribe?.();
         this.#unsubscribe = null;
         this.#button?.remove();
@@ -153,13 +150,15 @@ class YoutubeSpeedButton {
         if (event.detail > 1) {
             return;
         }
-        clearTimeout(this.#clickTimer);
-        this.#clickTimer = setTimeout(() => this.#updateSpeed(DEFAULT_SPEED), SINGLE_CLICK_DELAY_MS);
+        // Reset immediately, but remember the speed for a double click that may follow.
+        this.#speedBeforeClick = this.#store.state.speed;
+        this.#updateSpeed(DEFAULT_SPEED);
     }
 
     #onDoubleClick() {
-        clearTimeout(this.#clickTimer);
-        this.#updateSpeed(toggledMaxSpeed(this.#store.state.speed));
+        // The first click has already reset the speed, so toggle based on the speed before it.
+        this.#updateSpeed(toggledMaxSpeed(this.#speedBeforeClick ?? this.#store.state.speed));
+        this.#speedBeforeClick = null;
     }
 
     #updateSpeed(speed) {
