@@ -7,14 +7,6 @@ p {
     margin: 0px;
 }
 
-.hidden {
-    display: none;
-}
-
-input[type=range]:focus-visible {
-    outline: 0;
-}
-
 .heading {
     margin: 0px;
     font-weight: 400;
@@ -54,26 +46,26 @@ input[type=range]:focus-visible {
     width: 100%;
 }
 
-.settings__volume-persent {
+.settings__volume-percent {
     display: flex;
     justify-content: space-between;
     margin-bottom: 16px;
 }
 
-.settings__volume-persent__min, .settings__volume-persent__max {
+.settings__volume-percent__min, .settings__volume-percent__max {
     color: #a0a0a0;
 }
 
-.settings__volume-persent__current {
+.settings__volume-percent__current {
     color: #303030;
     font-weight: bold;
 }
 
-.settings__volume-persent__current::before {
+.settings__volume-percent__current::before {
     content: "Volume: ";
 }
 
-.settings__volume-persent__min::after, .settings__volume-persent__current::after, .settings__volume-persent__max::after {
+.settings__volume-percent__min::after, .settings__volume-percent__current::after, .settings__volume-percent__max::after {
     content: "%";
 }
 
@@ -81,26 +73,26 @@ input[type=range]:focus-visible {
     width: 100%;
 }
 
-.settings__speed-persent {
+.settings__speed-percent {
     display: flex;
     justify-content: space-between;
     margin-bottom: 16px;
 }
 
-.settings__speed-persent__min, .settings__speed-persent__max {
+.settings__speed-percent__min, .settings__speed-percent__max {
     color: #a0a0a0;
 }
 
-.settings__speed-persent__current {
+.settings__speed-percent__current {
     color: #303030;
     font-weight: bold;
 }
 
-.settings__speed-persent__current::before {
+.settings__speed-percent__current::before {
     content: "Speed: ";
 }
 
-.settings__speed-persent__min::after, .settings__speed-persent__current::after, .settings__speed-persent__max::after {
+.settings__speed-percent__min::after, .settings__speed-percent__current::after, .settings__speed-percent__max::after {
     content: "%";
 }
 
