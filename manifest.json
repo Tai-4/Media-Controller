@@ -13,6 +13,16 @@
       {
         "matches": ["<all_urls>"],
         "js": [
+          "./ContentScript/media/media-state.js",
+          "./ContentScript/media/media-state-store.js",
+          "./ContentScript/media/media-elements.js",
+          "./ContentScript/media/audio-graph.js",
+          "./ContentScript/sites/empty.js",
+          "./ContentScript/sites/youtube/speed-controller-element.js",
+          "./ContentScript/sites/youtube/ui-adapter.js",
+          "./ContentScript/sites/factories.js",
+          "./ContentScript/messaging.js",
+          "./ContentScript/speed-controller-callbacks.js",
           "./ContentScript/content.js"
         ]
       }
