@@ -6,7 +6,7 @@ The following list is what you can change
 - pan (left/right bias of sound)
 
 # Caution
-This may not work properly with other extensions providing similer features.
+This may not work properly with other extensions providing similar features.
 
 # LICENSE
-This project is licensed under the [MIT License]([https://github.com/Tai-4/Video-Volumer/blob/main/LICENSE]).
+This project is licensed under the [MIT License](LICENSE).
